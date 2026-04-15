@@ -185,7 +185,12 @@ func (s *Server) callbackHandler(c *gin.Context) {
 			fmt.Errorf("%s: %v", errs.ErrInfoUpdateUserInfo, err))
 		return
 	}
-	tokenHash := utils.HashToken(user.Devices[0].AccessToken)
+	token, err := getTokenFromHeader(c)
+	if err != nil {
+		response.HandleError(c, http.StatusUnauthorized, errs.ErrTokenInvalid, err)
+		return
+	}
+	tokenHash := utils.HashToken(token)
 	encryptedState, err := getEncryptedData(ParameterCarrier{
 		TokenHash: tokenHash,
 	})
