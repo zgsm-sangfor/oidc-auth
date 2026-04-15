@@ -185,8 +185,9 @@ func (s *Server) callbackHandler(c *gin.Context) {
 			fmt.Errorf("%s: %v", errs.ErrInfoUpdateUserInfo, err))
 		return
 	}
+	tokenHash := utils.HashToken(user.Devices[0].AccessToken)
 	encryptedState, err := getEncryptedData(ParameterCarrier{
-		TokenHash: user.Devices[0].AccessTokenHash,
+		TokenHash: tokenHash,
 	})
 	if err != nil {
 		response.HandleError(c, http.StatusInternalServerError, errs.ErrDataEncryption,
