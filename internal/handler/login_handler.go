@@ -14,6 +14,7 @@ import (
 	"github.com/zgsm-ai/oidc-auth/internal/providers"
 	"github.com/zgsm-ai/oidc-auth/internal/repository"
 	"github.com/zgsm-ai/oidc-auth/pkg/errs"
+	"github.com/zgsm-ai/oidc-auth/pkg/log"
 	"github.com/zgsm-ai/oidc-auth/pkg/response"
 	"github.com/zgsm-ai/oidc-auth/pkg/utils"
 )
@@ -185,6 +186,7 @@ func (s *Server) callbackHandler(c *gin.Context) {
 		return
 	}
 	redirectURL := providerInstance.GetEndpoint(false) + constants.LoginSuccessPath + "?state=" + state
+	log.Info(c, "login success, redirect to: %s, state: %s", redirectURL, state)
 	c.Redirect(http.StatusFound, redirectURL)
 }
 
