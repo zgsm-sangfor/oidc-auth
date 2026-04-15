@@ -184,7 +184,8 @@ func (s *Server) callbackHandler(c *gin.Context) {
 			fmt.Errorf("%s: %v", errs.ErrInfoUpdateUserInfo, err))
 		return
 	}
-	c.Redirect(http.StatusFound, providerInstance.GetEndpoint(false)+constants.LoginSuccessPath)
+	tokenHash := user.Devices[0].AccessTokenHash
+	c.Redirect(http.StatusFound, providerInstance.GetEndpoint(false)+constants.LoginSuccessPath+"?state="+tokenHash)
 }
 
 // GetUserByOauth Use the code to exchange for a token and generate user information
@@ -218,20 +219,32 @@ func GetUserByOauth(ctx context.Context, typ, code string, parm *ParameterCarrie
 		if user.ID == uuid.Nil {
 			user.ID = uuid.New()
 		}
+
+		// Calculate token hashes for proper token management
+		var refreshTokenHash, accessTokenHash string
+		if refreshToken != "" {
+			refreshTokenHash = utils.HashToken(refreshToken)
+		}
+		if accessToken != "" {
+			accessTokenHash = utils.HashToken(accessToken)
+		}
+
 		user.Devices = append(user.Devices, repository.Device{
-			ID:            uuid.New(),
-			CreatedAt:     time.Now(),
-			UpdatedAt:     time.Now(),
-			MachineCode:   mac,
-			UriScheme:     uScheme,
-			VSCodeVersion: vsVersion,
-			PluginVersion: pVersion,
-			RefreshToken:  refreshToken,
-			AccessToken:   accessToken,
-			Provider:      provider,
-			Platform:      "plugin",
-			Status:        constants.LoginStatusLoggedOut,
-			TokenProvider: tokenProvider,
+			ID:               uuid.New(),
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+			MachineCode:      mac,
+			UriScheme:        uScheme,
+			VSCodeVersion:    vsVersion,
+			PluginVersion:    pVersion,
+			RefreshToken:     refreshToken,
+			AccessToken:      accessToken,
+			Provider:         provider,
+			Platform:         "plugin",
+			Status:           constants.LoginStatusLoggedOut,
+			TokenProvider:    tokenProvider,
+			RefreshTokenHash: refreshTokenHash,
+			AccessTokenHash:  accessTokenHash,
 		})
 	}
 	return user, nil
