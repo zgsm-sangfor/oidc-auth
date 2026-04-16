@@ -327,6 +327,11 @@ func handleInviterCodeValidation(ctx context.Context, c *gin.Context, user *repo
 // then finds the matching device by state and machine_code within the user's device list,
 // and returns the access token stored on that device.
 func getAccessTokenByDevice(ctx context.Context, userID uuid.UUID, state, machineCode string) (string, error) {
+	log.Info(ctx, "=== getAccessTokenByDevice Input ===")
+	log.Info(ctx, "  userID: %s", userID)
+	log.Info(ctx, "  state: %s", state)
+	log.Info(ctx, "  machineCode: %s", machineCode)
+
 	storedUser, err := repository.GetDB().GetUserByField(ctx, "id", userID)
 	if err != nil {
 		return "", fmt.Errorf("failed to query user from DB: %v", err)
@@ -334,6 +339,13 @@ func getAccessTokenByDevice(ctx context.Context, userID uuid.UUID, state, machin
 	if storedUser == nil {
 		return "", fmt.Errorf("user not found in DB")
 	}
+	log.Info(ctx, "=== storedUser ===")
+	log.Info(ctx, "  storedUser: %+v", storedUser)
+	log.Info(ctx, "=== storedUser.Devices ===")
+	for i, d := range storedUser.Devices {
+		log.Info(ctx, "  device[%d]: %+v", i, d)
+	}
+
 	for _, d := range storedUser.Devices {
 		if d.State == state && d.MachineCode == machineCode {
 			if d.AccessToken == "" {
