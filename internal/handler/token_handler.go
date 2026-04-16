@@ -91,7 +91,30 @@ func firstGetToken(machineCode, vscodeVersion, state string) (*utils.TokenPair, 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	db := repository.GetDB()
+
+	// Try to find a device that already has the final token (LoggedIn status)
 	user, err := db.GetUserByDeviceConditions(ctx, map[string]any{
+		"machine_code":   machineCode,
+		"vscode_version": vscodeVersion,
+		"access_token_hash": state,
+		"status":         constants.LoginStatusLoggedIn,
+	})
+	if err != nil {
+		return nil, http.StatusUnauthorized, errs.ErrInfoQueryUserInfo
+	}
+	if user != nil {
+		index := findDeviceIndex(user, machineCode, vscodeVersion)
+		if index != -1 {
+			log.Info(ctx, "firstGetToken: found existing LoggedIn device, returning token from DB")
+			return &utils.TokenPair{
+				AccessToken:  user.Devices[index].AccessToken,
+				RefreshToken: user.Devices[index].RefreshToken,
+			}, http.StatusOK, nil
+		}
+	}
+
+	// Fallback: no final token yet, generate a new one
+	user, err = db.GetUserByDeviceConditions(ctx, map[string]any{
 		"machine_code":   machineCode,
 		"vscode_version": vscodeVersion,
 		"state":          state,
@@ -101,7 +124,6 @@ func firstGetToken(machineCode, vscodeVersion, state string) (*utils.TokenPair, 
 		return nil, http.StatusUnauthorized, errs.ErrInfoQueryUserInfo
 	}
 	if user == nil {
-		//return nil, http.StatusUnauthorized, errs.ErrInfoInvalidToken
 		return &utils.TokenPair{
 			AccessToken:  "",
 			RefreshToken: "",

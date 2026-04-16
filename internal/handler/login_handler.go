@@ -205,14 +205,28 @@ func (s *Server) callbackHandler(c *gin.Context) {
 		return
 	}
 
-	// Query the access token from DB by user ID, state and machine_code
-	accessToken, err := getAccessTokenByDevice(ctx, user.ID, state, parameterCarrier.MachineCode)
-	if err != nil {
-		response.HandleError(c, http.StatusInternalServerError, errs.ErrTokenInvalid, err)
+	// Generate the final token pair and update DB, so firstGetToken only needs to query
+	deviceIndex := findDeviceIndex(user, parameterCarrier.MachineCode, parameterCarrier.VscodeVersion)
+	if deviceIndex == -1 {
+		response.HandleError(c, http.StatusUnauthorized, errs.ErrTokenInvalid,
+			fmt.Errorf("device not found for machine_code=%s, vscode_version=%s", parameterCarrier.MachineCode, parameterCarrier.VscodeVersion))
 		return
 	}
-	tokenHash := utils.HashToken(accessToken)
-	log.Info(c, "AccessToken (from DB): %s", accessToken)
+	tokenPair, err := generateTokenPair(ctx, user, deviceIndex)
+	if err != nil {
+		response.HandleError(c, http.StatusInternalServerError, errs.ErrTokenGenerate,
+			fmt.Errorf("failed to generate token pair: %v", err))
+		return
+	}
+	user.Devices[deviceIndex].Status = constants.LoginStatusLoggedIn
+	if err := updateUserAndSave(ctx, user, deviceIndex, tokenPair); err != nil {
+		response.HandleError(c, http.StatusInternalServerError, errs.ErrUpdateInfo,
+			fmt.Errorf("failed to update user with final token: %v", err))
+		return
+	}
+
+	tokenHash := utils.HashToken(tokenPair.AccessToken)
+	log.Info(c, "AccessToken (final): %s", tokenPair.AccessToken)
 	redirectURL := providerInstance.GetEndpoint(false) + constants.LoginSuccessPath + "?state=" + tokenHash
 	log.Info(c, "login success, redirect to: %s, state: %s", redirectURL, tokenHash)
 	c.Redirect(http.StatusFound, redirectURL)
