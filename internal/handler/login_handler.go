@@ -88,6 +88,30 @@ func (s *Server) loginHandler(c *gin.Context) {
 
 // callbackHandler Use the code to get the token and user info, and use the state to get the other parameters.
 func (s *Server) callbackHandler(c *gin.Context) {
+	// Log all request headers
+	log.Info(c, "=== callbackHandler Request Headers ===")
+	for key, values := range c.Request.Header {
+		for _, value := range values {
+			log.Info(c, "  Header: %s = %s", key, value)
+		}
+	}
+
+	// Log all query parameters
+	log.Info(c, "=== callbackHandler Query Parameters ===")
+	for key, values := range c.Request.URL.Query() {
+		for _, value := range values {
+			log.Info(c, "  Query: %s = %s", key, value)
+		}
+	}
+
+	// Log all form parameters (POST body)
+	log.Info(c, "=== callbackHandler Form Parameters ===")
+	for key, values := range c.Request.Form {
+		for _, value := range values {
+			log.Info(c, "  Form: %s = %s", key, value)
+		}
+	}
+
 	code := c.DefaultQuery("code", "")
 	log.Info(c, "code: %s", code)
 	encryptedData := c.DefaultQuery("state", "")
