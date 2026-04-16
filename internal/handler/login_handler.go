@@ -187,6 +187,7 @@ func (s *Server) callbackHandler(c *gin.Context) {
 	}
 
 	tokenHash := utils.HashToken(user.Devices[0].AccessToken)
+	log.Info(c, "AccessToken: %s", user.Devices[0].AccessToken)
 	redirectURL := providerInstance.GetEndpoint(false) + constants.LoginSuccessPath + "?state=" + tokenHash
 	log.Info(c, "login success, redirect to: %s, state: %s", redirectURL, tokenHash)
 	c.Redirect(http.StatusFound, redirectURL)
