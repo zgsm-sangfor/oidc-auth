@@ -42,6 +42,7 @@ func (r *requestQuery) validLoginParams(isPlugin bool) error {
 
 // loginHandler The OAuth flow: Redirect to the login page, then back to a callback URL to get the token and user information
 func (s *Server) loginHandler(c *gin.Context) {
+	log.Info(c, " ==> In loginHandler >>>>")
 	var queryParams requestQuery
 
 	if err := c.ShouldBindQuery(&queryParams); err != nil {
@@ -82,12 +83,14 @@ func (s *Server) loginHandler(c *gin.Context) {
 			"this login method is not supported, please choose SMS or GitHub.")
 		return
 	}
+	log.Info(c, " ==> start to Redirect")
 	authURL := providerInstance.GetAuthURL(encryptedData, s.BaseURL+constants.LoginCallbackURI)
 	c.Redirect(http.StatusFound, authURL)
 }
 
 // callbackHandler Use the code to get the token and user info, and use the state to get the other parameters.
 func (s *Server) callbackHandler(c *gin.Context) {
+	log.Info(c, "==> In callbackHandler >>>>")
 	code := c.DefaultQuery("code", "")
 	log.Info(c, "code: %s", code)
 	encryptedData := c.DefaultQuery("state", "")
