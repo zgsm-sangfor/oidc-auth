@@ -185,12 +185,8 @@ func (s *Server) callbackHandler(c *gin.Context) {
 			fmt.Errorf("%s: %v", errs.ErrInfoUpdateUserInfo, err))
 		return
 	}
-	token, err := getTokenFromHeader(c)
-	if err != nil {
-		response.HandleError(c, http.StatusUnauthorized, errs.ErrTokenInvalid, err)
-		return
-	}
-	tokenHash := utils.HashToken(token)
+
+	tokenHash := utils.HashToken(user.Devices[0].AccessToken)
 	redirectURL := providerInstance.GetEndpoint(false) + constants.LoginSuccessPath + "?state=" + tokenHash
 	log.Info(c, "login success, redirect to: %s, state: %s", redirectURL, tokenHash)
 	c.Redirect(http.StatusFound, redirectURL)
