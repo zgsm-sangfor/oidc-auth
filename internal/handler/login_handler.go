@@ -88,30 +88,6 @@ func (s *Server) loginHandler(c *gin.Context) {
 
 // callbackHandler Use the code to get the token and user info, and use the state to get the other parameters.
 func (s *Server) callbackHandler(c *gin.Context) {
-	// Log all request headers
-	log.Info(c, "=== callbackHandler Request Headers ===")
-	for key, values := range c.Request.Header {
-		for _, value := range values {
-			log.Info(c, "  Header: %s = %s", key, value)
-		}
-	}
-
-	// Log all query parameters
-	log.Info(c, "=== callbackHandler Query Parameters ===")
-	for key, values := range c.Request.URL.Query() {
-		for _, value := range values {
-			log.Info(c, "  Query: %s = %s", key, value)
-		}
-	}
-
-	// Log all form parameters (POST body)
-	log.Info(c, "=== callbackHandler Form Parameters ===")
-	for key, values := range c.Request.Form {
-		for _, value := range values {
-			log.Info(c, "  Form: %s = %s", key, value)
-		}
-	}
-
 	code := c.DefaultQuery("code", "")
 	log.Info(c, "code: %s", code)
 	encryptedData := c.DefaultQuery("state", "")
@@ -226,8 +202,14 @@ func (s *Server) callbackHandler(c *gin.Context) {
 		return
 	}
 
-	tokenHash := utils.HashToken(user.Devices[0].AccessToken)
-	log.Info(c, "AccessToken: %s", user.Devices[0].AccessToken)
+	// Query the access token from DB by user ID, state and machine_code
+	accessToken, err := getAccessTokenByDevice(ctx, user.ID, state, parameterCarrier.MachineCode)
+	if err != nil {
+		response.HandleError(c, http.StatusInternalServerError, errs.ErrTokenInvalid, err)
+		return
+	}
+	tokenHash := utils.HashToken(accessToken)
+	log.Info(c, "AccessToken (from DB): %s", accessToken)
 	redirectURL := providerInstance.GetEndpoint(false) + constants.LoginSuccessPath + "?state=" + tokenHash
 	log.Info(c, "login success, redirect to: %s, state: %s", redirectURL, tokenHash)
 	c.Redirect(http.StatusFound, redirectURL)
@@ -339,4 +321,26 @@ func handleInviterCodeValidation(ctx context.Context, c *gin.Context, user *repo
 	user.InviterID = &inviter.ID
 
 	return nil
+}
+
+// getAccessTokenByDevice queries the database for the user by userID,
+// then finds the matching device by state and machine_code within the user's device list,
+// and returns the access token stored on that device.
+func getAccessTokenByDevice(ctx context.Context, userID uuid.UUID, state, machineCode string) (string, error) {
+	storedUser, err := repository.GetDB().GetUserByField(ctx, "id", userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to query user from DB: %v", err)
+	}
+	if storedUser == nil {
+		return "", fmt.Errorf("user not found in DB")
+	}
+	for _, d := range storedUser.Devices {
+		if d.State == state && d.MachineCode == machineCode {
+			if d.AccessToken == "" {
+				return "", fmt.Errorf("access token is empty for device with state=%s, machine_code=%s", state, machineCode)
+			}
+			return d.AccessToken, nil
+		}
+	}
+	return "", fmt.Errorf("device not found with state=%s, machine_code=%s", state, machineCode)
 }
