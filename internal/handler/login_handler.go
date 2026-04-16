@@ -245,6 +245,10 @@ func GetUserByOauth(ctx context.Context, typ, code string, parm *ParameterCarrie
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
+	log.Info(ctx, "=== ExchangeToken Result ===")
+	log.Info(ctx, "=== ExchangeToken Result ===  token: %+v", token)
+	log.Info(ctx, "=== ExchangeToken Result ===  AccessToken: %s", token.AccessToken)
+	log.Info(ctx, "=== ExchangeToken Result ===  RefreshToken: %s", token.RefreshToken)
 	user, userErr := providerInstance.GetUserInfo(ctx, token.AccessToken)
 	if userErr != nil {
 		return nil, fmt.Errorf("%s: %v", errs.ErrInfoQueryUserInfo, userErr)
