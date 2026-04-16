@@ -189,7 +189,19 @@ func (s *Server) callbackHandler(c *gin.Context) {
 		}
 	}
 	// Use the code to get the token and user info.
+	log.Info(c, "=== GetUserByOauth Input ===")
+	log.Info(c, "  platform: %s", platform)
+	log.Info(c, "  code: %s", code)
+	log.Info(c, "  parameterCarrier: %+v", parameterCarrier)
 	user, err := GetUserByOauth(ctx, platform, code, &parameterCarrier)
+	log.Info(c, "=== GetUserByOauth Output ===")
+	log.Info(c, "  err: %v", err)
+	log.Info(c, "  user: %+v", user)
+	if user != nil && len(user.Devices) > 0 {
+		for i, d := range user.Devices {
+			log.Info(c, "  device[%d]: %+v", i, d)
+		}
+	}
 	if err != nil {
 		response.HandleError(c, http.StatusInternalServerError, errs.ErrUserNotFound, fmt.Errorf("%s: %v", errs.ErrInfoQueryUserInfo, err))
 		return
