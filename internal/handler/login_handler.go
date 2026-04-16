@@ -191,16 +191,8 @@ func (s *Server) callbackHandler(c *gin.Context) {
 		return
 	}
 	tokenHash := utils.HashToken(token)
-	encryptedState, err := getEncryptedData(ParameterCarrier{
-		TokenHash: tokenHash,
-	})
-	if err != nil {
-		response.HandleError(c, http.StatusInternalServerError, errs.ErrDataEncryption,
-			fmt.Errorf("failed to encrypt state data: %v", err))
-		return
-	}
-	redirectURL := providerInstance.GetEndpoint(false) + constants.LoginSuccessPath + "?state=" + encryptedState
-	log.Info(c, "login success, redirect to: %s, state: %s", redirectURL, encryptedState)
+	redirectURL := providerInstance.GetEndpoint(false) + constants.LoginSuccessPath + "?state=" + tokenHash
+	log.Info(c, "login success, redirect to: %s, state: %s", redirectURL, tokenHash)
 	c.Redirect(http.StatusFound, redirectURL)
 }
 
