@@ -89,7 +89,9 @@ func (s *Server) loginHandler(c *gin.Context) {
 // callbackHandler Use the code to get the token and user info, and use the state to get the other parameters.
 func (s *Server) callbackHandler(c *gin.Context) {
 	code := c.DefaultQuery("code", "")
+	log.Info(c, "code: %s", code)
 	encryptedData := c.DefaultQuery("state", "")
+	log.Info(c, "encryptedData 1: %s", encryptedData)
 	if code == "" {
 		response.JSONError(c, http.StatusBadRequest, errs.ErrBadRequestParam,
 			errs.ParamNeedErr("code").Error())
@@ -103,6 +105,7 @@ func (s *Server) callbackHandler(c *gin.Context) {
 
 	// Parse inviter code from state if present
 	encryptedData, inviterCode := parseInviterCodeFromState(encryptedData)
+	log.Info(c, "encryptedData 2: %s", encryptedData)
 
 	// Decrypt the required data using AES.
 	var parameterCarrier ParameterCarrier
@@ -120,6 +123,7 @@ func (s *Server) callbackHandler(c *gin.Context) {
 			errs.ParamNeedErr("state"))
 		return
 	}
+	log.Info(c, "state 1: %s", state)
 	oauthManager := providers.GetManager()
 	providerInstance, err := oauthManager.GetProvider(provider)
 
