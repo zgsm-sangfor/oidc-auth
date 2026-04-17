@@ -42,7 +42,6 @@ func (r *requestQuery) validLoginParams(isPlugin bool) error {
 
 // loginHandler The OAuth flow: Redirect to the login page, then back to a callback URL to get the token and user information
 func (s *Server) loginHandler(c *gin.Context) {
-	log.Info(c, " ==> In loginHandler >>>>")
 	var queryParams requestQuery
 
 	if err := c.ShouldBindQuery(&queryParams); err != nil {
@@ -83,18 +82,14 @@ func (s *Server) loginHandler(c *gin.Context) {
 			"this login method is not supported, please choose SMS or GitHub.")
 		return
 	}
-	log.Info(c, " ==> start to Redirect")
 	authURL := providerInstance.GetAuthURL(encryptedData, s.BaseURL+constants.LoginCallbackURI)
 	c.Redirect(http.StatusFound, authURL)
 }
 
 // callbackHandler Use the code to get the token and user info, and use the state to get the other parameters.
 func (s *Server) callbackHandler(c *gin.Context) {
-	log.Info(c, "==> In callbackHandler >>>>")
 	code := c.DefaultQuery("code", "")
-	log.Info(c, "code: %s", code)
 	encryptedData := c.DefaultQuery("state", "")
-	log.Info(c, "encryptedData 1: %s", encryptedData)
 	if code == "" {
 		response.JSONError(c, http.StatusBadRequest, errs.ErrBadRequestParam,
 			errs.ParamNeedErr("code").Error())
@@ -108,7 +103,6 @@ func (s *Server) callbackHandler(c *gin.Context) {
 
 	// Parse inviter code from state if present
 	encryptedData, inviterCode := parseInviterCodeFromState(encryptedData)
-	log.Info(c, "encryptedData 2: %s", encryptedData)
 
 	// Decrypt the required data using AES.
 	var parameterCarrier ParameterCarrier
@@ -126,7 +120,6 @@ func (s *Server) callbackHandler(c *gin.Context) {
 			errs.ParamNeedErr("state"))
 		return
 	}
-	log.Info(c, "state 1: %s", state)
 	oauthManager := providers.GetManager()
 	providerInstance, err := oauthManager.GetProvider(provider)
 
@@ -168,19 +161,7 @@ func (s *Server) callbackHandler(c *gin.Context) {
 		}
 	}
 	// Use the code to get the token and user info.
-	log.Info(c, "=== GetUserByOauth Input ===")
-	log.Info(c, "  platform: %s", platform)
-	log.Info(c, "  code: %s", code)
-	log.Info(c, "  parameterCarrier: %+v", parameterCarrier)
 	user, err := GetUserByOauth(ctx, platform, code, &parameterCarrier)
-	log.Info(c, "=== GetUserByOauth Output ===")
-	log.Info(c, "  err: %v", err)
-	log.Info(c, "  user: %+v", user)
-	if user != nil && len(user.Devices) > 0 {
-		for i, d := range user.Devices {
-			log.Info(c, "  device[%d]: %+v", i, d)
-		}
-	}
 	if err != nil {
 		response.HandleError(c, http.StatusInternalServerError, errs.ErrUserNotFound, fmt.Errorf("%s: %v", errs.ErrInfoQueryUserInfo, err))
 		return
@@ -226,7 +207,6 @@ func (s *Server) callbackHandler(c *gin.Context) {
 	}
 
 	tokenHash := utils.HashToken(tokenPair.AccessToken)
-	log.Info(c, "AccessToken (final): %s", tokenPair.AccessToken)
 	redirectURL := providerInstance.GetEndpoint(false) + constants.LoginSuccessPath + "?state=" + tokenHash
 	log.Info(c, "login success, redirect to: %s, state: %s", redirectURL, tokenHash)
 	c.Redirect(http.StatusFound, redirectURL)
@@ -244,10 +224,6 @@ func GetUserByOauth(ctx context.Context, typ, code string, parm *ParameterCarrie
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
-	log.Info(ctx, "=== ExchangeToken Result ===")
-	log.Info(ctx, "=== ExchangeToken Result ===  token: %+v", token)
-	log.Info(ctx, "=== ExchangeToken Result ===  AccessToken: %s", token.AccessToken)
-	log.Info(ctx, "=== ExchangeToken Result ===  RefreshToken: %s", token.RefreshToken)
 	user, userErr := providerInstance.GetUserInfo(ctx, token.AccessToken)
 	if userErr != nil {
 		return nil, fmt.Errorf("%s: %v", errs.ErrInfoQueryUserInfo, userErr)
@@ -338,38 +314,4 @@ func handleInviterCodeValidation(ctx context.Context, c *gin.Context, user *repo
 	user.InviterID = &inviter.ID
 
 	return nil
-}
-
-// getAccessTokenByDevice queries the database for the user by userID,
-// then finds the matching device by state and machine_code within the user's device list,
-// and returns the access token stored on that device.
-func getAccessTokenByDevice(ctx context.Context, userID uuid.UUID, state, machineCode string) (string, error) {
-	log.Info(ctx, "=== getAccessTokenByDevice Input ===")
-	log.Info(ctx, "  userID: %s", userID)
-	log.Info(ctx, "  state: %s", state)
-	log.Info(ctx, "  machineCode: %s", machineCode)
-
-	storedUser, err := repository.GetDB().GetUserByField(ctx, "id", userID)
-	if err != nil {
-		return "", fmt.Errorf("failed to query user from DB: %v", err)
-	}
-	if storedUser == nil {
-		return "", fmt.Errorf("user not found in DB")
-	}
-	log.Info(ctx, "=== storedUser ===")
-	log.Info(ctx, "  storedUser: %+v", storedUser)
-	log.Info(ctx, "=== storedUser.Devices ===")
-	for i, d := range storedUser.Devices {
-		log.Info(ctx, "  device[%d]: %+v", i, d)
-	}
-
-	for _, d := range storedUser.Devices {
-		if d.State == state && d.MachineCode == machineCode {
-			if d.AccessToken == "" {
-				return "", fmt.Errorf("access token is empty for device with state=%s, machine_code=%s", state, machineCode)
-			}
-			return d.AccessToken, nil
-		}
-	}
-	return "", fmt.Errorf("device not found with state=%s, machine_code=%s", state, machineCode)
 }

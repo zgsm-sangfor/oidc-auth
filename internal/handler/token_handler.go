@@ -20,7 +20,6 @@ import (
 
 // tokenHandler handles token requests (return new refresh_token/access_token by refresh token)
 func tokenHandler(c *gin.Context) {
-	log.Info(c, "===》 In tokenHandler")
 	var query requestQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.JSONError(c, http.StatusBadRequest, errs.ErrBadRequestParam, err.Error())
@@ -49,9 +48,6 @@ func tokenHandler(c *gin.Context) {
 				errs.ErrInfoGenerateToken.Error())
 			return
 		}
-		log.Info(c, "=== firstGetToken Response ===")
-		log.Info(c, "  access_token: %s", tokenPair.AccessToken)
-		log.Info(c, "  state: %s", c.DefaultQuery("state", ""))
 		response.JSONSuccess(c, "", gin.H{
 			"access_token":  tokenPair.AccessToken,
 			"refresh_token": tokenPair.RefreshToken,
@@ -74,9 +70,6 @@ func tokenHandler(c *gin.Context) {
 			errs.ErrInfoGenerateToken.Error())
 		return
 	}
-	log.Info(c, "=== tokenRefresh Response ===")
-	log.Info(c, "  access_token: %s", tokenPair.AccessToken)
-	log.Info(c, "  state: %s", c.DefaultQuery("state", ""))
 	response.JSONSuccess(c, "", gin.H{
 		"access_token":  tokenPair.AccessToken,
 		"refresh_token": tokenPair.RefreshToken,
@@ -250,7 +243,6 @@ func updateUserInfoMid(user *repository.AuthUser, index int, tokenPair *utils.To
 }
 
 func getTokenByHash(c *gin.Context) {
-	log.Info(c, " ==》 in getTokenByHash")
 	accessTokenHash, err := getTokenFromHeader(c)
 	if err != nil {
 		response.JSONError(c, http.StatusUnauthorized, errs.ErrBadRequestParam,
@@ -260,7 +252,6 @@ func getTokenByHash(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	tokenPair, err := utils.GetTokenByTokenHash(ctx, accessTokenHash)
-	log.Info(c, "tokenPair: %+v", tokenPair)
 	if err != nil {
 		response.JSONError(c, http.StatusUnauthorized, errs.ErrUserNotFound,
 			fmt.Sprintf("%s, %s", errs.ErrInfoQueryUserInfo, err.Error()))
