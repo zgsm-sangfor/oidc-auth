@@ -94,10 +94,10 @@ func firstGetToken(machineCode, vscodeVersion, state string) (*utils.TokenPair, 
 
 	// Try to find a device that already has the final token (LoggedIn status)
 	user, err := db.GetUserByDeviceConditions(ctx, map[string]any{
-		"machine_code":   machineCode,
-		"vscode_version": vscodeVersion,
+		"machine_code":      machineCode,
+		"vscode_version":    vscodeVersion,
 		"access_token_hash": state,
-		"status":         constants.LoginStatusLoggedIn,
+		"status":            constants.LoginStatusLoggedIn,
 	})
 	if err != nil {
 		return nil, http.StatusUnauthorized, errs.ErrInfoQueryUserInfo
@@ -106,6 +106,27 @@ func firstGetToken(machineCode, vscodeVersion, state string) (*utils.TokenPair, 
 		index := findDeviceIndex(user, machineCode, vscodeVersion)
 		if index != -1 {
 			log.Info(ctx, "firstGetToken: found existing LoggedIn device, returning token from DB")
+			return &utils.TokenPair{
+				AccessToken:  user.Devices[index].AccessToken,
+				RefreshToken: user.Devices[index].RefreshToken,
+			}, http.StatusOK, nil
+		}
+	}
+
+	// Try to find a device that has already been logged in via callback (state matches, status=LoggedIn)
+	user, err = db.GetUserByDeviceConditions(ctx, map[string]any{
+		"machine_code":   machineCode,
+		"vscode_version": vscodeVersion,
+		"state":          state,
+		"status":         constants.LoginStatusLoggedIn,
+	})
+	if err != nil {
+		return nil, http.StatusUnauthorized, errs.ErrInfoQueryUserInfo
+	}
+	if user != nil {
+		index := findDeviceIndex(user, machineCode, vscodeVersion)
+		if index != -1 {
+			log.Info(ctx, "firstGetToken: found LoggedIn device by state, returning token from DB")
 			return &utils.TokenPair{
 				AccessToken:  user.Devices[index].AccessToken,
 				RefreshToken: user.Devices[index].RefreshToken,
