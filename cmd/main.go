@@ -116,6 +116,9 @@ var serveCmd = &cobra.Command{
 		// Initialize quota service
 		globalConfig.QuotaManager.HTTPClient = httpClient
 		service.InitQuotaService(&globalConfig.QuotaManager)
+		service.SetConcurrencyConfig(&globalConfig.Concurrency)
+		globalConfig.License.HTTPClient = httpClient
+		service.SetLicenseConfig(&globalConfig.License)
 		providerCfg := make(map[string]*providers.ProviderConfig)
 		for name, p := range globalConfig.Providers {
 			providerCfg[name] = &providers.ProviderConfig{

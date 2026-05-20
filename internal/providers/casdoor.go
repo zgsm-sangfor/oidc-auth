@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -265,7 +266,8 @@ func (s *CasdoorProvider) RefreshToken(ctx context.Context, refreshToken string)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get token, status: %d", resp.StatusCode)
+		rspBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to get token, status: %d, data: %s", resp.StatusCode, string(rspBody))
 	}
 
 	var tokenResp TokenResponse

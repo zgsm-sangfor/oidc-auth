@@ -22,6 +22,8 @@ type AppConfig struct {
 	Providers    map[string]ProviderConfig `json:"providers" mapstructure:"providers"`
 	QuotaManager QuotaConfig               `json:"quotaManager" mapstructure:"quotaManager"`
 	Redirect     RedirectConfig            `json:"redirect" mapstructure:"redirect"`
+	Concurrency  ConcurrencyConfig         `json:"concurrency" mapstructure:"concurrency"`
+	License      LicenseConfig             `json:"license" mapstructure:"license"`
 }
 
 type Server struct {
@@ -105,6 +107,17 @@ type QuotaConfig struct {
 	HTTPClient *http.Client
 }
 
+type ConcurrencyConfig struct {
+	MaxConcurrentUsers int `json:"maxConcurrentUsers" mapstructure:"maxConcurrentUsers"`
+	ExpireDays         int `json:"expireDays" mapstructure:"expireDays"`
+}
+
+type LicenseConfig struct {
+	BaseURL    string `json:"baseURL" mapstructure:"baseURL"`
+	Endpoint   string `json:"endpoint" mapstructure:"endpoint"`
+	HTTPClient *http.Client
+}
+
 const (
 	EnvPrefix         = ""
 	DefaultConfigDir  = "."
@@ -119,6 +132,8 @@ func InitConfig(cfgFile string) (*AppConfig, error) {
 
 	viper.SetDefault("database.maxIdleConns", 50)
 	viper.SetDefault("database.maxOpenConns", 300)
+	viper.SetDefault("concurrency.maxConcurrentUsers", 0)
+	viper.SetDefault("concurrency.expireDays", 3)
 
 	viper.SetEnvPrefix(EnvPrefix)
 	viper.AutomaticEnv()

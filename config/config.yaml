@@ -133,6 +133,23 @@ quotaManager:
   # QuotaManager service base URL
   baseURL: ""
 
+# License service configuration
+license:
+  # License service base URL
+  baseURL: ""
+
+  # License API endpoint (default: /api/v1/sf_license/query/license)
+  endpoint: "/api/v1/sf_license/query/license"
+
+# Concurrent user limit configuration
+concurrency:
+  # Maximum number of concurrent online users (0 means unlimited)
+  # If license service is configured and returns a valid users limit, that value takes precedence.
+  maxConcurrentUsers: 0
+
+  # Number of days after which an inactive user is considered expired (default: 3)
+  expireDays: 3
+
 # Logging configuration
 log:
   # Log level: "debug", "info", "warn", "error"

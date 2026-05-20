@@ -317,3 +317,17 @@ func (d *Database) RemoveSyncLock(ctx context.Context, models any) error {
 		return nil
 	})
 }
+
+// GetAllUsersWithLoggedInDevices returns all users who have at least one device with status "logged_in"
+func (d *Database) GetAllUsersWithLoggedInDevices(ctx context.Context) ([]AuthUser, error) {
+	var users []AuthUser
+
+	err := d.db.WithContext(ctx).
+		Where("devices @> '[{\"status\": \"logged_in\"}]'").
+		Find(&users).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users with logged_in devices: %w", err)
+	}
+	return users, nil
+}

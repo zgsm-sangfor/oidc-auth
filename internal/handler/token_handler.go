@@ -12,6 +12,7 @@ import (
 	"github.com/zgsm-ai/oidc-auth/internal/constants"
 	"github.com/zgsm-ai/oidc-auth/internal/providers"
 	"github.com/zgsm-ai/oidc-auth/internal/repository"
+	"github.com/zgsm-ai/oidc-auth/internal/service"
 	"github.com/zgsm-ai/oidc-auth/pkg/errs"
 	"github.com/zgsm-ai/oidc-auth/pkg/log"
 	"github.com/zgsm-ai/oidc-auth/pkg/response"
@@ -99,6 +100,7 @@ func firstGetToken(machineCode, vscodeVersion, state string) (*utils.TokenPair, 
 		index := findDeviceIndex(user, machineCode, vscodeVersion)
 		if index != -1 {
 			log.Info(ctx, "firstGetToken: found existing LoggedIn device, returning token from DB")
+			updateDeviceActivity(ctx, user, index)
 			return &utils.TokenPair{
 				AccessToken:  user.Devices[index].AccessToken,
 				RefreshToken: user.Devices[index].RefreshToken,
@@ -120,6 +122,7 @@ func firstGetToken(machineCode, vscodeVersion, state string) (*utils.TokenPair, 
 		index := findDeviceIndex(user, machineCode, vscodeVersion)
 		if index != -1 {
 			log.Info(ctx, "firstGetToken: found LoggedIn device by state, returning token from DB")
+			updateDeviceActivity(ctx, user, index)
 			return &utils.TokenPair{
 				AccessToken:  user.Devices[index].AccessToken,
 				RefreshToken: user.Devices[index].RefreshToken,
@@ -147,6 +150,11 @@ func firstGetToken(machineCode, vscodeVersion, state string) (*utils.TokenPair, 
 	index := findDeviceIndex(user, machineCode, vscodeVersion)
 	if index == -1 {
 		return nil, http.StatusUnauthorized, errs.ErrInfoInvalidToken
+	}
+
+	// Check concurrent user limit before setting logged_in
+	if err := service.CheckAndEvict(ctx); err != nil {
+		return nil, http.StatusServiceUnavailable, err
 	}
 
 	tokenPair, err := generateTokenPair(ctx, user, index)
@@ -226,6 +234,19 @@ func updateUserAndSave(ctx context.Context, user *repository.AuthUser, index int
 	}
 	updateUserInfoMid(user, index, tokenPair)
 	return repository.GetDB().Upsert(ctx, user, constants.DBIndexField, user.ID)
+}
+
+func updateDeviceActivity(ctx context.Context, user *repository.AuthUser, index int) {
+	if user == nil || len(user.Devices) <= index {
+		return
+	}
+	now := time.Now()
+	user.UpdatedAt = now
+	user.AccessTime = now
+	user.Devices[index].UpdatedAt = now
+	if err := repository.GetDB().Upsert(ctx, user, constants.DBIndexField, user.ID); err != nil {
+		log.Error(ctx, "failed to update device activity: %v", err)
+	}
 }
 
 func updateUserInfoMid(user *repository.AuthUser, index int, tokenPair *utils.TokenPair) {

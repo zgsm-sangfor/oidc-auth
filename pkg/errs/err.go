@@ -19,6 +19,7 @@ const (
 	ErrBindAccount     = "oidc-auth.bindAccountFailed"
 	ErrTokenGenerate   = "oidc-auth.tokenGenerateFailed"
 	ErrAuthentication  = "oidc-auth.authenticationFailed"
+	ErrConcurrentLimit = "oidc-auth.concurrentLimitExceeded"
 )
 
 func ParamNeedErr(name string) error {

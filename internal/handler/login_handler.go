@@ -13,6 +13,7 @@ import (
 	"github.com/zgsm-ai/oidc-auth/internal/constants"
 	"github.com/zgsm-ai/oidc-auth/internal/providers"
 	"github.com/zgsm-ai/oidc-auth/internal/repository"
+	"github.com/zgsm-ai/oidc-auth/internal/service"
 	"github.com/zgsm-ai/oidc-auth/pkg/errs"
 	"github.com/zgsm-ai/oidc-auth/pkg/log"
 	"github.com/zgsm-ai/oidc-auth/pkg/response"
@@ -193,6 +194,13 @@ func (s *Server) callbackHandler(c *gin.Context) {
 			fmt.Errorf("device not found for machine_code=%s, vscode_version=%s", parameterCarrier.MachineCode, parameterCarrier.VscodeVersion))
 		return
 	}
+
+	// Check concurrent user limit before setting logged_in
+	if err := service.CheckAndEvict(ctx); err != nil {
+		response.HandleError(c, http.StatusServiceUnavailable, errs.ErrConcurrentLimit, err)
+		return
+	}
+
 	tokenPair, err := generateTokenPair(ctx, user, deviceIndex)
 	if err != nil {
 		response.HandleError(c, http.StatusInternalServerError, errs.ErrTokenGenerate,
